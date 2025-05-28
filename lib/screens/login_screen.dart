@@ -134,9 +134,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(fontSize: 16, color: Colors.white),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushReplacementNamed(context, '/home');
+                          },
+                          child: const Text(
+                            'Continuar como invitado',
+                            style: TextStyle(
+                              color: AppColors.secundario,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 20),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            // Lógica de recuperación
+                          },
                           child: const Text(
                             '¿Olvidaste tu contraseña?',
                             style: TextStyle(color: AppColors.secundario),

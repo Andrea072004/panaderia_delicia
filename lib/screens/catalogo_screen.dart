@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
+import 'productos_categoria_screen.dart';
 
 class CatalogoScreen extends StatelessWidget {
   const CatalogoScreen({super.key});
@@ -23,6 +24,7 @@ class CatalogoScreen extends StatelessWidget {
         _categoriaCard(context, 'Tortas', '🎂', AppColors.resalte),
         _categoriaCard(context, 'Bizcochos', '🍪', AppColors.secundario),
         _categoriaCard(context, 'Pye', '🥧', AppColors.principal),
+        _categoriaCard(context, 'Todos los productos', '🛍️', Colors.teal),
       ],
     );
   }
@@ -51,7 +53,15 @@ class CatalogoScreen extends StatelessWidget {
         ),
         trailing: Icon(Icons.chevron_right, color: color),
         onTap: () {
-          // Acción futura: navegar a productos de esta categoría
+          String key = titulo.toLowerCase();
+          if (titulo == 'Todos los productos') key = 'todos';
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProductosCategoriaScreen(categoria: key),
+            ),
+          );
         },
       ),
     );
