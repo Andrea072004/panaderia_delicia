@@ -23,7 +23,7 @@ class CatalogoScreen extends StatelessWidget {
         _categoriaCard(context, 'Pasteles', '🍰', AppColors.acento),
         _categoriaCard(context, 'Tortas', '🎂', AppColors.resalte),
         _categoriaCard(context, 'Bizcochos', '🍪', AppColors.secundario),
-        _categoriaCard(context, 'Pye', '🥧', AppColors.principal),
+        _categoriaCard(context, 'Pies', '🥧', AppColors.principal),
         _categoriaCard(context, 'Todos los productos', '🛍️', Colors.teal),
       ],
     );

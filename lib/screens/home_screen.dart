@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/colors.dart';
 
 // Simulaciones de pantallas (debes crearlas)
@@ -53,6 +54,41 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         actions: [
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('carrito').snapshots(),
+            builder: (context, snapshot) {
+              final total = snapshot.data?.docs.length ?? 0;
+              return Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        _selectedIndex = 2; // Ir a la pestaña del carrito
+                      });
+                    },
+                  ),
+                  if (total > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$total',
+                          style: const TextStyle(fontSize: 10, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.account_circle_outlined, color: Colors.white),
             onPressed: () {
