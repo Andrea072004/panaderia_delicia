@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/colors.dart';
 
-// Simulaciones de pantallas (debes crearlas)
 import 'catalogo_screen.dart';
 import 'carrito_screen.dart';
 import 'pedidos_screen.dart';
@@ -178,10 +177,45 @@ class _InicioScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        _productoCard('Croissant de mantequilla', 'assets/images/croissant.png'),
-        _productoCard('Tarta de fresas', 'assets/images/tarta.png'),
-        _productoCard('Pan campesino', 'assets/images/pan.png'),
+        // Llamamos a Firestore para cargar los productos recientes
+        _productosRecientes(),
       ],
+    );
+  }
+
+  // Método para cargar los productos recientes desde Firestore
+  Widget _productosRecientes() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('productos') // Nombre de la colección en Firestore
+          .orderBy('timestamp', descending: true) // Ordenamos por el campo 'timestamp' (asegurándonos de que sea reciente)
+          .limit(3) // Limitar a los últimos 3 productos recientes (puedes ajustar el número)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return const Center(child: Text('Error al cargar productos'));
+        }
+
+        final productos = snapshot.data!.docs;
+
+        if (productos.isEmpty) {
+          return const Center(child: Text('No hay productos recientes'));
+        }
+
+        return Column(
+          children: productos.map((doc) {
+            var producto = doc.data() as Map<String, dynamic>;
+            return _productoCard(
+              producto['nombre'],
+              producto['imagen'] ?? 'assets/images/pan.png', // Ahora usa Image.network para cargar la URL de la imagen
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
@@ -203,8 +237,8 @@ class _InicioScreen extends StatelessWidget {
         contentPadding: const EdgeInsets.all(16),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            imgPath,
+          child: Image.network(
+            imgPath, // Usamos Image.network para cargar imágenes desde una URL
             width: 60,
             height: 60,
             fit: BoxFit.cover,

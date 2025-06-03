@@ -7,7 +7,7 @@ class CarritoScreen extends StatelessWidget {
 
   void _actualizarCantidad(DocumentReference ref, int nuevaCantidad) async {
     if (nuevaCantidad <= 0) {
-      await ref.delete();
+      await ref.delete(); // Eliminar el producto si la cantidad llega a 0
     } else {
       await ref.update({'cantidad': nuevaCantidad});
     }
@@ -17,11 +17,6 @@ class CarritoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.fondoClaro,
-      appBar: AppBar(
-        backgroundColor: AppColors.principal,
-        title: const Text('Mi Carrito', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('carrito')
