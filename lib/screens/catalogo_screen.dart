@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import 'productos_categoria_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CatalogoScreen extends StatelessWidget {
   const CatalogoScreen({super.key});
@@ -10,6 +11,7 @@ class CatalogoScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const SizedBox(height: 20),
         const Text(
           'Explora por categoría',
           style: TextStyle(
@@ -19,6 +21,7 @@ class CatalogoScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
+        // Cards de categorías
         _categoriaCard(context, 'Panes', '🥖', AppColors.boton),
         _categoriaCard(context, 'Pasteles', '🍰', AppColors.acento),
         _categoriaCard(context, 'Tortas', '🎂', AppColors.resalte),
