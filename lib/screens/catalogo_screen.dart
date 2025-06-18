@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import 'productos_categoria_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CatalogoScreen extends StatelessWidget {
-  const CatalogoScreen({super.key});
+  final void Function(int) onNavigateToIndex;
+
+  const CatalogoScreen({super.key, required this.onNavigateToIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -22,17 +23,17 @@ class CatalogoScreen extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         // Cards de categorías
-        _categoriaCard(context, 'Panes', '🥖', AppColors.boton),
-        _categoriaCard(context, 'Pasteles', '🍰', AppColors.acento),
-        _categoriaCard(context, 'Tortas', '🎂', AppColors.resalte),
-        _categoriaCard(context, 'Bizcochos', '🍪', AppColors.secundario),
-        _categoriaCard(context, 'Pies', '🥧', AppColors.principal),
-        _categoriaCard(context, 'Todos los productos', '🛍️', Colors.teal),
+        _categoriaCard(context, 'Panes', '🥖', AppColors.boton, onNavigateToIndex),
+        _categoriaCard(context, 'Pasteles', '🍰', AppColors.acento, onNavigateToIndex),
+        _categoriaCard(context, 'Tortas', '🎂', AppColors.resalte, onNavigateToIndex),
+        _categoriaCard(context, 'Bizcochos', '🍪', AppColors.secundario, onNavigateToIndex),
+        _categoriaCard(context, 'Pies', '🥧', AppColors.principal, onNavigateToIndex),
+        _categoriaCard(context, 'Todos los productos', '🛍️', Colors.teal, onNavigateToIndex),
       ],
     );
   }
 
-  Widget _categoriaCard(BuildContext context, String titulo, String emoji, Color color) {
+  Widget _categoriaCard(BuildContext context, String titulo, String emoji, Color color, void Function(int) onNavigateToIndex,) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -62,7 +63,10 @@ class CatalogoScreen extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ProductosCategoriaScreen(categoria: key),
+              builder: (_) => ProductosCategoriaScreen(
+                categoria: key,
+                onNavigateToIndex: onNavigateToIndex,
+              ),
             ),
           );
         },

@@ -60,7 +60,13 @@ class PanaderiaDeliciaApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
         '/perfil': (context) => const PerfilScreen(),
-        '/catalogo': (context) => const CatalogoScreen(), 
+        '/catalogo': (context) => CatalogoScreen(
+          onNavigateToIndex: (int index) {
+            // Aquí podrías hacer navegación o lógica, si tienes acceso.
+            // Por ahora, usa un placeholder si no puedes acceder directamente.
+            print("Navegar a índice $index");
+          },
+        ),
         '/carrito': (context) => const CarritoScreen(),
         '/pedidos': (context) => const PedidosScreen(),
       },

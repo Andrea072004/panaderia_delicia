@@ -17,12 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = const [
-    _InicioScreen(),
-    CatalogoScreen(),
-    CarritoScreen(),
-    PedidosScreen(),
-  ];
+  late List<Widget> _screens;
 
   final List<String> _titles = [
     'Inicio',
@@ -30,6 +25,17 @@ class _HomeScreenState extends State<HomeScreen> {
     'Mi Carrito',
     'Mis Pedidos',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      _InicioScreen(onNavigateToIndex: _onItemTapped),
+      CatalogoScreen(onNavigateToIndex: _onItemTapped),
+      CarritoScreen(),
+      PedidosScreen(),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -39,6 +45,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String userId = FirebaseAuth.instance.currentUser?.uid ?? 'invitado';
+
     return Scaffold(
       backgroundColor: AppColors.fondoClaro,
       appBar: AppBar(
@@ -55,7 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
         actions: [
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('carrito').snapshots(),
+            stream: FirebaseFirestore.instance
+                .collection('usuarios')
+                .doc(userId)
+                .collection('carrito')
+                .snapshots(),
             builder: (context, snapshot) {
               final total = snapshot.data?.docs.length ?? 0;
               return Stack(
@@ -63,11 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                    onPressed: () {
-                      setState(() {
-                        _selectedIndex = 2;
-                      });
-                    },
+                    onPressed: () => _onItemTapped(2),
                   ),
                   if (total > 0)
                     Positioned(
@@ -132,7 +140,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _InicioScreen extends StatelessWidget {
-  const _InicioScreen();
+  final Function(int) onNavigateToIndex;
+
+  const _InicioScreen({required this.onNavigateToIndex});
 
   @override
   Widget build(BuildContext context) {

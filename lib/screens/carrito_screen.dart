@@ -32,14 +32,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.fondoClaro,
-      appBar: AppBar(
-        backgroundColor: AppColors.principal,
-        title: const Text('Mi Carrito', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
+    return Container(
+      color: AppColors.fondoClaro,
+      child: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('usuarios')
             .doc(userId)
@@ -110,7 +105,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         title: Text(
                           producto['nombre'],
                           style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 14),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                         subtitle: Text(
                           'S/.${precioFinal} soles x $cantidad',
@@ -207,7 +204,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
                   ),
                   child: const Text(
                     'Confirmar Pedido',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
               )
@@ -226,8 +224,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          Text('S/.${valor.toStringAsFixed(2)} soles',
-              style: const TextStyle(fontSize: 16, color: AppColors.boton)),
+          Text(
+            'S/.${valor.toStringAsFixed(2)} soles',
+            style: const TextStyle(fontSize: 16, color: AppColors.boton),
+          ),
         ],
       ),
     );
