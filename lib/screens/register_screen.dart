@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 👈 Importación añadida
 import '../theme/colors.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -259,11 +260,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      await FirebaseFirestore.instance.collection('usuarios').add({
+      // 1. Crear el usuario en Firebase Auth
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      String uid = userCredential.user!.uid;
+
+      // 2. Guardar los datos adicionales en Firestore
+      await FirebaseFirestore.instance.collection('usuarios').doc(uid).set({
         'nombres': _nombresController.text.trim(),
         'apellidos': _apellidosController.text.trim(),
         'email': _emailController.text.trim(),
-        'contraseña': _passwordController.text.trim(),
         'edad': int.parse(_edadController.text.trim()),
         'fechaNacimiento': _fechaNacimiento,
         'sexo': _sexoSeleccionado,
@@ -272,13 +282,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Datos registrados correctamente')),
+        const SnackBar(content: Text('Registro exitoso')),
       );
 
       Navigator.pushReplacementNamed(context, '/login');
+    } on FirebaseAuthException catch (e) {
+      String mensaje = 'Error desconocido';
+      if (e.code == 'email-already-in-use') {
+        mensaje = 'Este correo ya está registrado';
+      } else if (e.code == 'invalid-email') {
+        mensaje = 'Correo inválido';
+      } else if (e.code == 'weak-password') {
+        mensaje = 'La contraseña es muy débil';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje)),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al guardar: ${e.toString()}')),
+        SnackBar(content: Text('Error: ${e.toString()}')),
       );
     }
   }

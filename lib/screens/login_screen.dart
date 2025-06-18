@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ Autenticación
 import '../theme/colors.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -192,26 +192,30 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      final query = await FirebaseFirestore.instance
-          .collection('usuarios')
-          .where('email', isEqualTo: _emailController.text.trim())
-          .where('contraseña', isEqualTo: _passwordController.text.trim())
-          .get();
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-      if (query.docs.isNotEmpty) {
-        final userData = query.docs.first.data();
-        final nombre = userData['nombres'];
+      // Ir a la pantalla principal
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      String mensaje = 'Error desconocido';
 
-        print('✔ Usuario válido: $nombre');
-        Navigator.pushReplacementNamed(context, '/home');
+      if (e.code == 'user-not-found') {
+        mensaje = 'No existe una cuenta con este correo';
+      } else if (e.code == 'wrong-password') {
+        mensaje = 'Contraseña incorrecta';
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Correo o contraseña incorrectos')),
-        );
+        mensaje = e.message ?? mensaje;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje)),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al iniciar sesión: ${e.toString()}')),
+        SnackBar(content: Text('Error inesperado: $e')),
       );
     }
   }

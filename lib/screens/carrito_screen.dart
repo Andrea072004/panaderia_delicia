@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/colors.dart';
 
 class CarritoScreen extends StatefulWidget {
@@ -10,21 +11,20 @@ class CarritoScreen extends StatefulWidget {
 }
 
 class _CarritoScreenState extends State<CarritoScreen> {
-  // Variable para almacenar la opción de entrega (envío o recogida)
-  String tipoEntrega = 'Recoger en tienda'; // Valor por defecto
-  double costoEnvio = 0.0; // Costo adicional por envío
+  String tipoEntrega = 'Recoger en tienda';
+  double costoEnvio = 0.0;
+
+  final String userId = FirebaseAuth.instance.currentUser?.uid ?? 'invitado';
 
   void _actualizarCantidad(DocumentReference ref, int nuevaCantidad) async {
     if (nuevaCantidad <= 0) {
-      await ref.delete(); // Eliminar el producto si la cantidad llega a 0
+      await ref.delete();
     } else {
       await ref.update({'cantidad': nuevaCantidad});
     }
   }
 
   void _confirmarPedido(BuildContext context) {
-    // Aquí puedes agregar la lógica para confirmar el pedido
-    // Como un resumen del pedido y luego proceder con la compra
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Pedido confirmado')),
     );
@@ -34,8 +34,15 @@ class _CarritoScreenState extends State<CarritoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.fondoClaro,
+      appBar: AppBar(
+        backgroundColor: AppColors.principal,
+        title: const Text('Mi Carrito', style: TextStyle(color: Colors.white)),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
+            .collection('usuarios')
+            .doc(userId)
             .collection('carrito')
             .orderBy('timestamp', descending: true)
             .snapshots(),
@@ -60,21 +67,16 @@ class _CarritoScreenState extends State<CarritoScreen> {
             final data = doc.data() as Map<String, dynamic>;
             final precioFinal = data['precio'] ?? 0;
             final cantidad = data['cantidad'] ?? 1;
-
-            // El precio ya incluye el IGV, así que calculamos el valor sin IGV
             final precioBase = precioFinal / 1.18;
-            final igvProducto = precioBase * 0.18; // El IGV calculado
-
-            // Sumar al total
-            total += precioFinal * cantidad; // El total final incluye el IGV
-            totalIGV += igvProducto * cantidad; // Solo para mostrar el IGV acumulado
+            final igvProducto = precioBase * 0.18;
+            total += precioFinal * cantidad;
+            totalIGV += igvProducto * cantidad;
           }
 
-          // Agregar costo de envío si es necesario
           if (tipoEntrega == 'Envío') {
-            costoEnvio = 5.0; // Se agrega S/ 5.00 si es envío
+            costoEnvio = 5.0;
           } else {
-            costoEnvio = 0.0; // No hay costo adicional para recogida en tienda
+            costoEnvio = 0.0;
           }
 
           return Column(
@@ -111,7 +113,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                               fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         subtitle: Text(
-                          'S/.${precioFinal} soles x ${cantidad}',
+                          'S/.${precioFinal} soles x $cantidad',
                           style: const TextStyle(fontSize: 12),
                         ),
                         trailing: Row(
@@ -139,7 +141,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
                   },
                 ),
               ),
-              // Opción de Envío o Recogida con botones redondeados
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -148,14 +149,13 @@ class _CarritoScreenState extends State<CarritoScreen> {
                       'Selecciona la opción de entrega:',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ElevatedButton(
                           onPressed: () {
-                            setState(() {
-                              tipoEntrega = 'Recoger en tienda';
-                            });
+                            setState(() => tipoEntrega = 'Recoger en tienda');
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: tipoEntrega == 'Recoger en tienda'
@@ -164,20 +164,14 @@ class _CarritoScreenState extends State<CarritoScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12), // Ajusté el tamaño del botón
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           ),
-                          child: const Text(
-                            'Recoger en tienda',
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
+                          child: const Text('Recoger en tienda', style: TextStyle(color: Colors.white)),
                         ),
                         const SizedBox(width: 20),
                         ElevatedButton(
                           onPressed: () {
-                            setState(() {
-                              tipoEntrega = 'Envío';
-                            });
+                            setState(() => tipoEntrega = 'Envío');
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: tipoEntrega == 'Envío'
@@ -186,98 +180,25 @@ class _CarritoScreenState extends State<CarritoScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12), // Ajusté el tamaño del botón
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           ),
-                          child: const Text(
-                            'Envío (S/. 5.00 adicional)',
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
+                          child: const Text('Envío (S/. 5.00)', style: TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: Colors.white,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total (sin IGV):',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'S/.${(total - totalIGV).toStringAsFixed(2)} soles',
-                      style: const TextStyle(
-                          fontSize: 16, color: AppColors.boton),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: Colors.white,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'IGV (18%):',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'S/.${totalIGV.toStringAsFixed(2)} soles',
-                      style: const TextStyle(
-                          fontSize: 16, color: AppColors.boton),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: Colors.white,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Envío:',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'S/.${costoEnvio.toStringAsFixed(2)} soles',
-                      style: const TextStyle(
-                          fontSize: 16, color: AppColors.boton),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: Colors.white,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total a Pagar:',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'S/.${(total + costoEnvio).toStringAsFixed(2)} soles',
-                      style: const TextStyle(
-                          fontSize: 16, color: AppColors.boton),
-                    ),
-                  ],
-                ),
-              ),
-              // Botón de Confirmación de Pedido
+              _buildResumen('Total (sin IGV):', (total - totalIGV)),
+              _buildResumen('IGV (18%):', totalIGV),
+              _buildResumen('Envío:', costoEnvio),
+              _buildResumen('Total a Pagar:', (total + costoEnvio)),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: ElevatedButton(
                   onPressed: () => _confirmarPedido(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.boton, // Cambié 'primary' a 'backgroundColor'
+                    backgroundColor: AppColors.boton,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -286,17 +207,28 @@ class _CarritoScreenState extends State<CarritoScreen> {
                   ),
                   child: const Text(
                     'Confirmar Pedido',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold, // Aumenté el peso de la fuente
-                      color: Colors.white, // Color blanco para el texto
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),
               )
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildResumen(String titulo, double valor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.white,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('S/.${valor.toStringAsFixed(2)} soles',
+              style: const TextStyle(fontSize: 16, color: AppColors.boton)),
+        ],
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/colors.dart';
 
 import 'catalogo_screen.dart';
@@ -64,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: const Icon(Icons.shopping_cart, color: Colors.white),
                     onPressed: () {
                       setState(() {
-                        _selectedIndex = 2; // Ir a la pestaña del carrito
+                        _selectedIndex = 2;
                       });
                     },
                   ),
@@ -135,61 +136,76 @@ class _InicioScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.acento.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                '👋 ¡Hola, Andrea!',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.secundario,
-                ),
+    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('usuarios').doc(uid).get(),
+      builder: (context, snapshot) {
+        String nombre = 'Usuario';
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          nombre = data['nombres'] ?? 'Usuario';
+        }
+
+        return ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.acento.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
               ),
-              SizedBox(height: 8),
-              Text(
-                '🍞 Bienvenida a Delicia.\nTu lugar para disfrutar dulces momentos ✨',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.secundario,
-                  height: 1.4,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '👋 ¡Hola, $nombre!',
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.secundario,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '🍞 Bienvenida a Delicia.\nTu lugar para disfrutar dulces momentos ✨',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppColors.secundario,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
-        const Text(
-          '🧁 Productos recientes',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.secundario,
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Llamamos a Firestore para cargar los productos recientes
-        _productosRecientes(),
-      ],
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              '🧁 Productos recientes',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.secundario,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _productosRecientes(),
+          ],
+        );
+      },
     );
   }
 
-  // Método para cargar los productos recientes desde Firestore
-  Widget _productosRecientes() {
+  static Widget _productosRecientes() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('productos') // Nombre de la colección en Firestore
-          .orderBy('timestamp', descending: true) // Ordenamos por el campo 'timestamp' (asegurándonos de que sea reciente)
-          .limit(3) // Limitar a los últimos 3 productos recientes (puedes ajustar el número)
+          .collection('productos')
+          .orderBy('timestamp', descending: true)
+          .limit(4)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -211,7 +227,7 @@ class _InicioScreen extends StatelessWidget {
             var producto = doc.data() as Map<String, dynamic>;
             return _productoCard(
               producto['nombre'],
-              producto['imagen'] ?? 'assets/images/pan.png', // Ahora usa Image.network para cargar la URL de la imagen
+              producto['imagen'] ?? 'assets/images/pan.png',
             );
           }).toList(),
         );
@@ -238,7 +254,7 @@ class _InicioScreen extends StatelessWidget {
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.network(
-            imgPath, // Usamos Image.network para cargar imágenes desde una URL
+            imgPath,
             width: 60,
             height: 60,
             fit: BoxFit.cover,

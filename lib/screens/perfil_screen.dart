@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Solo Firestore para manejar los datos
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/colors.dart';
 
 class PerfilScreen extends StatelessWidget {
@@ -8,57 +8,66 @@ class PerfilScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mi Perfil'),
         backgroundColor: AppColors.principal,
-        elevation: 0, // Remover la sombra para un estilo más limpio
+        elevation: 0,
       ),
       backgroundColor: AppColors.fondoClaro,
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const CircleAvatar(
-                radius: 50,
-                backgroundImage: AssetImage('assets/images/usuario.png'), // Usa tu propia imagen o ícono
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Andrea Ramírez',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.secundario,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'andrearamirez@email.com',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.secundario,
-                ),
-              ),
-              const SizedBox(height: 24),
+      body: FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance.collection('usuarios').doc(uid).get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              // Acción para editar perfil
-              _categoriaCard(context, 'Editar perfil', Icons.edit, AppColors.acento),
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text('No se encontraron datos del usuario'));
+          }
 
-              // Botón Mis Direcciones
-              _categoriaCard(context, 'Mis Direcciones', Icons.location_on, AppColors.resalte),
+          final userData = snapshot.data!.data() as Map<String, dynamic>;
 
-              // Botón Cerrar sesión
-              _categoriaCard(context, 'Cerrar sesión', Icons.logout, AppColors.boton),
-            ],
-          ),
-        ),
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const CircleAvatar(
+                    radius: 50,
+                    backgroundImage: AssetImage('assets/images/usuario.png'),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '${userData['nombres']} ${userData['apellidos']}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.secundario,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${userData['email']}',
+                    style: const TextStyle(fontSize: 14, color: AppColors.secundario),
+                  ),
+                  const SizedBox(height: 24),
+
+                  _categoriaCard(context, 'Editar perfil', Icons.edit, AppColors.acento, userData),
+                  _categoriaCard(context, 'Mis Direcciones', Icons.location_on, AppColors.resalte, userData),
+                  _categoriaCard(context, 'Cerrar sesión', Icons.logout, AppColors.boton, userData),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _categoriaCard(BuildContext context, String titulo, IconData icon, Color color) {
+  Widget _categoriaCard(BuildContext context, String titulo, IconData icon, Color color, Map<String, dynamic> userData) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -78,26 +87,22 @@ class PerfilScreen extends StatelessWidget {
         leading: Icon(icon, color: color),
         title: Text(
           titulo,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: color),
         ),
         trailing: Icon(Icons.chevron_right, color: color),
         onTap: () {
-          // Acciones para cada botón
           if (titulo == 'Editar perfil') {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => EditarPerfilScreen(),
+                builder: (context) => EditarPerfilScreen(userData: userData),
               ),
             );
           } else if (titulo == 'Mis Direcciones') {
-            // Acción para mis direcciones (aún no implementada)
+            // En desarrollo
           } else if (titulo == 'Cerrar sesión') {
-            // Acción para cerrar sesión (aún no implementada)
+            FirebaseAuth.instance.signOut();
+            Navigator.pushReplacementNamed(context, '/login');
           }
         },
       ),
@@ -105,44 +110,60 @@ class PerfilScreen extends StatelessWidget {
   }
 }
 
+// ===================== EDITAR PERFIL =====================
 class EditarPerfilScreen extends StatefulWidget {
-  const EditarPerfilScreen({super.key});
+  final Map<String, dynamic> userData;
+
+  const EditarPerfilScreen({super.key, required this.userData});
 
   @override
   _EditarPerfilScreenState createState() => _EditarPerfilScreenState();
 }
 
 class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
-  final TextEditingController _nombreController = TextEditingController(text: 'Andrea Ramírez');
-  final TextEditingController _apellidoController = TextEditingController(text: 'Ramírez');
-  final TextEditingController _emailController = TextEditingController(text: 'andrearamirez@email.com');
-  final TextEditingController _edadController = TextEditingController(text: '25');
-  final TextEditingController _fechaNacimientoController = TextEditingController(text: '1997-01-01');
-  final TextEditingController _sexoController = TextEditingController(text: 'Femenino');
-  final TextEditingController _passwordController = TextEditingController(text: 'password'); // Para actualizar la contraseña
+  late TextEditingController _nombreController;
+  late TextEditingController _apellidoController;
+  late TextEditingController _emailController;
+  late TextEditingController _edadController;
+  late TextEditingController _fechaNacimientoController;
+  late TextEditingController _sexoController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nombreController = TextEditingController(text: widget.userData['nombres']);
+    _apellidoController = TextEditingController(text: widget.userData['apellidos']);
+    _emailController = TextEditingController(text: widget.userData['email']);
+    _edadController = TextEditingController(text: widget.userData['edad'].toString());
+    _fechaNacimientoController = TextEditingController(
+      text: widget.userData['fechaNacimiento'] != null
+          ? widget.userData['fechaNacimiento'].toDate().toString().split(' ')[0]
+          : '',
+    );
+    _sexoController = TextEditingController(text: widget.userData['sexo']);
+  }
 
   void _guardarCambios() async {
-    final userDocRef = FirebaseFirestore.instance.collection('users').doc('user-id'); // Reemplaza 'user-id' con el ID del usuario
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final userDocRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
 
     try {
       await userDocRef.update({
         'nombres': _nombreController.text,
         'apellidos': _apellidoController.text,
-        'correo': _emailController.text,
-        'edad': _edadController.text,
-        'fechaNacimiento': _fechaNacimientoController.text,
+        'email': _emailController.text,
+        'edad': int.tryParse(_edadController.text) ?? 0,
+        'fechaNacimiento': Timestamp.fromDate(DateTime.tryParse(_fechaNacimientoController.text) ?? DateTime.now()),
         'sexo': _sexoController.text,
-        'password': _passwordController.text,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Perfil actualizado')),
       );
-
-      Navigator.pop(context); // Regresa a la pantalla de perfil
+      Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error al guardar cambios: $e')),
       );
     }
   }
@@ -177,8 +198,6 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
               _buildInputField(_fechaNacimientoController, 'Fecha de Nacimiento'),
               const SizedBox(height: 16),
               _buildInputField(_sexoController, 'Sexo'),
-              const SizedBox(height: 16),
-              _buildInputField(_passwordController, 'Nueva Contraseña', obscureText: true),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _guardarCambios,
@@ -192,11 +211,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                 ),
                 child: const Text(
                   'Guardar Cambios',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
             ],
@@ -212,12 +227,11 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       obscureText: obscureText,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: AppColors.secundario),
+        labelStyle: const TextStyle(color: AppColors.secundario),
         filled: true,
         fillColor: AppColors.principal.withOpacity(0.1),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.secundario),
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(color: AppColors.acento),

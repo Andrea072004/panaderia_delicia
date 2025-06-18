@@ -8,6 +8,9 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/perfil_screen.dart';
+import 'screens/carrito_screen.dart';
+import 'screens/pedidos_screen.dart';
+import 'screens/catalogo_screen.dart';
 import 'theme/colors.dart';
 
 void main() async {
@@ -57,6 +60,9 @@ class PanaderiaDeliciaApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
         '/perfil': (context) => const PerfilScreen(),
+        '/catalogo': (context) => const CatalogoScreen(), 
+        '/carrito': (context) => const CarritoScreen(),
+        '/pedidos': (context) => const PedidosScreen(),
       },
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../theme/colors.dart';
@@ -13,95 +14,96 @@ class ProductosCategoriaScreen extends StatefulWidget {
 }
 
 class _ProductosCategoriaScreenState extends State<ProductosCategoriaScreen> {
-  final Map<String, int> cantidades = {};
-  String searchQuery = ''; // Variable para almacenar la búsqueda
-  TextEditingController searchController = TextEditingController(); // Controlador para la barra de búsqueda
-  
-  // Variables para los filtros
-  String selectedFilter = 'Sin filtros'; // Filtro por defecto
-  String selectedOrder = 'Ordenar por'; // Filtro de orden
+  String searchQuery = '';
+  TextEditingController searchController = TextEditingController();
+  String selectedFilter = 'Sin filtros';
+  int _selectedIndex = 1;
 
-  // Este método actualiza la cantidad de productos en el carrito en tiempo real
-  void _agregarAlCarrito(Map<String, dynamic> producto) async {
-    try {
-      final cart = Provider.of<CartProvider>(context, listen: false);
+  String get userId => FirebaseAuth.instance.currentUser?.uid ?? 'invitado';
 
-      // Agregar el producto al carrito en Firestore
-      final carritoRef = FirebaseFirestore.instance.collection('carrito');
+  Future<int> _obtenerCantidadProducto(String nombre) async {
+    final cartRef = FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(userId)
+        .collection('carrito');
 
-      // Verificar si el producto ya está en el carrito
-      final existente = await carritoRef
-          .where('nombre', isEqualTo: producto['nombre'])
-          .limit(1)
-          .get();
-
-      if (existente.docs.isNotEmpty) {
-        final doc = existente.docs.first;
-        final data = doc.data();
-        final nuevaCantidad = (data['cantidad'] ?? 1) + 1;
-
-        await doc.reference.update({'cantidad': nuevaCantidad});
-      } else {
-        await carritoRef.add({
-          'nombre': producto['nombre'],
-          'precio': producto['precio'],
-          'imagen': producto['imagen'],
-          'cantidad': 1,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      }
-
-      // Mostrar mensaje de confirmación
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${producto['nombre']} agregado al carrito')),
-      );
-    } catch (e) {
-      print('❌ Error al agregar al carrito: $e');
+    final query = await cartRef.where('nombre', isEqualTo: nombre).limit(1).get();
+    if (query.docs.isNotEmpty) {
+      return query.docs.first['cantidad'] ?? 0;
     }
+    return 0;
   }
 
-  // Método para actualizar la cantidad en Firestore al disminuir
-  void _disminuirCantidad(Map<String, dynamic> producto) async {
-    final carritoRef = FirebaseFirestore.instance.collection('carrito');
+  Future<void> _agregarAlCarrito(Map<String, dynamic> producto) async {
+    final cartRef = FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(userId)
+        .collection('carrito');
 
-    final existente = await carritoRef
-        .where('nombre', isEqualTo: producto['nombre'])
-        .limit(1)
-        .get();
+    final query = await cartRef.where('nombre', isEqualTo: producto['nombre']).limit(1).get();
+    if (query.docs.isNotEmpty) {
+      final doc = query.docs.first;
+      await doc.reference.update({'cantidad': (doc['cantidad'] ?? 1) + 1});
+    } else {
+      await cartRef.add({
+        'nombre': producto['nombre'],
+        'precio': producto['precio'],
+        'imagen': producto['imagen'],
+        'cantidad': 1,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
 
-    if (existente.docs.isNotEmpty) {
-      final doc = existente.docs.first;
-      final data = doc.data();
-      final nuevaCantidad = (data['cantidad'] ?? 1) - 1;
+    setState(() {}); // Actualiza la interfaz
+  }
 
-      // Si la cantidad es 0 o menor, se elimina el producto
+  Future<void> _disminuirCantidad(Map<String, dynamic> producto) async {
+    final cartRef = FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(userId)
+        .collection('carrito');
+
+    final query = await cartRef.where('nombre', isEqualTo: producto['nombre']).limit(1).get();
+    if (query.docs.isNotEmpty) {
+      final doc = query.docs.first;
+      final nuevaCantidad = (doc['cantidad'] ?? 1) - 1;
       if (nuevaCantidad <= 0) {
         await doc.reference.delete();
       } else {
         await doc.reference.update({'cantidad': nuevaCantidad});
       }
     }
+
+    setState(() {}); // Actualiza la interfaz
   }
 
-  // Mostrar la descripción del producto cuando se hace clic en el ícono de detalle
   void _mostrarDescripcion(Map<String, dynamic> producto) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(producto['nombre']),
-          content: Text(producto['descripcion'] ?? 'Sin descripción'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: Text(producto['nombre']),
+        content: Text(producto['descripcion'] ?? 'Sin descripción'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _onItemTapped(int index) {
+    setState(() => _selectedIndex = index);
+    if (index == 0) {
+      Navigator.pushReplacementNamed(context, '/home');
+    } else if (index == 1) {
+      Navigator.pushReplacementNamed(context, '/catalogo');
+    } else if (index == 2) {
+      Navigator.pushReplacementNamed(context, '/carrito');
+    } else if (index == 3) {
+      Navigator.pushReplacementNamed(context, '/pedidos');
+    }
   }
 
   @override
@@ -115,236 +117,207 @@ class _ProductosCategoriaScreenState extends State<ProductosCategoriaScreen> {
           style: const TextStyle(color: Colors.white),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart),
+            onPressed: () => Navigator.pushNamed(context, '/carrito'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => Navigator.pushNamed(context, '/perfil'),
+          ),
+        ],
       ),
-      body: Column(
-        children: [
-          // Barra de búsqueda con filtro al costado
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        searchQuery = value.trim().toLowerCase();
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Buscar productos...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: AppColors.boton,
+        unselectedItemColor: AppColors.secundario.withOpacity(0.5),
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
+          BottomNavigationBarItem(icon: Icon(Icons.storefront), label: 'Catálogo'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Carrito'),
+          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Pedidos'),
+        ],
+      ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('productos').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError || snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final productos = snapshot.data!.docs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final nombre = data['nombre']?.toString().toLowerCase() ?? '';
+          final coincideBusqueda = searchQuery.isEmpty || nombre.contains(searchQuery);
+          final coincideCategoria = widget.categoria.toLowerCase() == 'todos' ||
+              data['categoria']?.toString().toLowerCase() == widget.categoria.toLowerCase();
+          return coincideBusqueda && coincideCategoria;
+        }).toList();
+
+        if (selectedFilter == 'Ordenar de A a Z') {
+          productos.sort((a, b) => a['nombre'].toString().compareTo(b['nombre'].toString()));
+        } else if (selectedFilter == 'Ordenar de Z a A') {
+          productos.sort((a, b) => b['nombre'].toString().compareTo(a['nombre'].toString()));
+        }
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: searchController,
+                      onChanged: (value) => setState(() => searchQuery = value.trim().toLowerCase()),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar productos...',
+                        prefixIcon: const Icon(Icons.search),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                // Filtro desplegable para precios, popularidad, y orden alfabético
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 6,
-                        offset: Offset(2, 2),
-                      ),
-                    ],
-                  ),
-                  child: DropdownButton<String>(
-                    value: selectedFilter,
-                    icon: Icon(Icons.filter_list),
-                    items: <String>[
-                      'Sin filtros', 
-                      'Mayor Precio', 
-                      'Menor Precio', 
-                      'Más Popular', 
-                      'Menos Popular', 
-                      'Ordenar de A a Z', 
-                      'Ordenar de Z a A'
-                    ].map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedFilter = newValue!;
-                      });
-                    },
-                    underline: SizedBox(), // Sin línea debajo
-                    isExpanded: false,
-                  ),
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  _buildDropdownFilter(),
+                ],
+              ),
             ),
-          ),
-          // El resto del contenido en un Expanded
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('carrito')
-                  .orderBy('timestamp', descending: true)
-                  .snapshots(),
-              builder: (context, carritoSnapshot) {
-                if (carritoSnapshot.hasError) {
-                  return const Center(child: Text('Error al cargar el carrito'));
-                }
+            Expanded(
+              child: ListView.builder(
+                itemCount: productos.length,
+                itemBuilder: (context, index) {
+                  final producto = productos[index].data() as Map<String, dynamic>;
+                  final nombre = producto['nombre'];
+                  final puntuacion = producto['puntuacion'] ?? 0;
+                  final descuento = producto['descuento'] ?? 0;
+                  final precio = (producto['precio'] as num).toDouble();
+                  final precioFinal = descuento > 0 ? precio - (precio * descuento / 100) : precio;
 
-                if (carritoSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                  return FutureBuilder<int>(
+                    future: _obtenerCantidadProducto(nombre),
+                    builder: (context, snapshot) {
+                      final cantidad = snapshot.data ?? 0;
 
-                final carritoItems = carritoSnapshot.data!.docs;
-
-                // Actualizar el mapa de cantidades en tiempo real
-                for (var item in carritoItems) {
-                  final producto = item.data() as Map<String, dynamic>;
-                  cantidades[producto['nombre']] = producto['cantidad'];
-                }
-
-                return StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('productos').snapshots(),
-                  builder: (context, productosSnapshot) {
-                    if (productosSnapshot.hasError) {
-                      return const Center(child: Text('Error al cargar productos'));
-                    }
-
-                    if (productosSnapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final todosLosProductos = productosSnapshot.data!.docs;
-
-                    // Aplicar búsqueda y filtro por categoría si no se está buscando
-                    final productosFiltrados = todosLosProductos.where((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final nombre = data['nombre']?.toString().toLowerCase() ?? '';
-                      final coincideBusqueda = searchQuery.isEmpty || nombre.contains(searchQuery);
-                      final coincideCategoria = widget.categoria == 'todos'
-                          || data['categoria']?.toString().toLowerCase() == widget.categoria.toLowerCase();
-                      
-                      // Filtrar según el filtro seleccionado
-                      if (selectedFilter == 'Mayor Precio') {
-                        return coincideBusqueda && coincideCategoria;
-                      } else if (selectedFilter == 'Menor Precio') {
-                        return coincideBusqueda && coincideCategoria;
-                      } else if (selectedFilter == 'Más Popular') {
-                        return coincideBusqueda && coincideCategoria;
-                      } else if (selectedFilter == 'Menos Popular') {
-                        return coincideBusqueda && coincideCategoria;
-                      }
-
-                      return coincideBusqueda && coincideCategoria;
-                    }).toList();
-
-                    // Ordenar alfabéticamente A-Z o Z-A
-                    if (selectedFilter == 'Ordenar de A a Z') {
-                      productosFiltrados.sort((a, b) {
-                        final nombreA = (a.data() as Map<String, dynamic>)['nombre'].toString().toLowerCase();
-                        final nombreB = (b.data() as Map<String, dynamic>)['nombre'].toString().toLowerCase();
-                        return nombreA.compareTo(nombreB);
-                      });
-                    } else if (selectedFilter == 'Ordenar de Z a A') {
-                      productosFiltrados.sort((a, b) {
-                        final nombreA = (a.data() as Map<String, dynamic>)['nombre'].toString().toLowerCase();
-                        final nombreB = (b.data() as Map<String, dynamic>)['nombre'].toString().toLowerCase();
-                        return nombreB.compareTo(nombreA);
-                      });
-                    }
-
-                    if (productosFiltrados.isEmpty) {
-                      return const Center(child: Text('No se encontraron productos'));
-                    }
-
-                    return ListView.builder(
-                      itemCount: productosFiltrados.length,
-                      itemBuilder: (context, index) {
-                        final producto = productosFiltrados[index].data() as Map<String, dynamic>;
-                        final nombre = producto['nombre'];
-                        final puntuacion = producto['puntuacion'] ?? 0;
-
-                        cantidades.putIfAbsent(nombre, () => 0);
-
-                        return Consumer<CartProvider>( 
-                          builder: (context, cart, child) {
-                            return Card(
-                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Row(
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  producto['imagen'],
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(
-                                        producto['imagen'],
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          nombre,
-                                          style: const TextStyle(fontWeight: FontWeight.w600),
-                                        ),
-                                        Text('S/.${producto['precio']} soles'),
-                                        Row(
-                                          children: List.generate(5, (index) {
-                                            return Icon(
-                                              index < puntuacion ? Icons.star : Icons.star_border,
-                                              color: Colors.amber,
-                                              size: 18,
-                                            );
-                                          }),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.info_outline),
-                                          onPressed: () => _mostrarDescripcion(producto),
-                                        ),
-                                      ],
-                                    ),
-                                    const Spacer(),
+                                    Text(nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    if (descuento > 0)
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'S/.${precio.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              decoration: TextDecoration.lineThrough,
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'S/.${precioFinal.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              color: Colors.redAccent,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else
+                                      Text('S/.${precio.toStringAsFixed(2)} soles'),
                                     Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.remove_circle_outline),
-                                          onPressed: () => _disminuirCantidad(producto),
-                                        ),
-                                        Text('${cantidades[nombre] ?? 0}', style: const TextStyle(fontSize: 16)),
-                                        IconButton(
-                                          icon: const Icon(Icons.add_circle_outline),
-                                          onPressed: () => _agregarAlCarrito(producto),
-                                        ),
-                                      ],
+                                      children: List.generate(5, (i) => Icon(
+                                        i < puntuacion ? Icons.star : Icons.star_border,
+                                        color: Colors.amber,
+                                        size: 18,
+                                      )),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.info_outline),
+                                      onPressed: () => _mostrarDescripcion(producto),
                                     ),
                                   ],
                                 ),
                               ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+                              Column(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline),
+                                    onPressed: () => _disminuirCantidad(producto),
+                                  ),
+                                  Text('$cantidad', style: const TextStyle(fontSize: 16)),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle_outline),
+                                    onPressed: () => _agregarAlCarrito(producto),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDropdownFilter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6, offset: const Offset(2, 2)),
         ],
+      ),
+      child: DropdownButton<String>(
+        value: selectedFilter,
+        icon: const Icon(Icons.filter_list),
+        items: [
+          'Sin filtros', 'Mayor Precio', 'Menor Precio',
+          'Más Popular', 'Menos Popular',
+          'Ordenar de A a Z', 'Ordenar de Z a A'
+        ].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+        onChanged: (newValue) => setState(() => selectedFilter = newValue!),
+        underline: const SizedBox(),
       ),
     );
   }
