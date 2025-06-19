@@ -11,6 +11,7 @@ import 'screens/perfil_screen.dart';
 import 'screens/carrito_screen.dart';
 import 'screens/pedidos_screen.dart';
 import 'screens/catalogo_screen.dart';
+import 'screens/pedido_confirmado_screen.dart';
 import 'theme/colors.dart';
 
 void main() async {
@@ -69,6 +70,7 @@ class PanaderiaDeliciaApp extends StatelessWidget {
         ),
         '/carrito': (context) => const CarritoScreen(),
         '/pedidos': (context) => const PedidosScreen(),
+        '/pedido-confirmado': (context) => const PedidoConfirmadoScreen(),
       },
     );
   }

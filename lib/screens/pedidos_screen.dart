@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../theme/colors.dart';
 import 'package:intl/intl.dart';
+import '../theme/colors.dart';
 
 class PedidosScreen extends StatelessWidget {
   const PedidosScreen({super.key});
@@ -17,8 +17,8 @@ class PedidosScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('usuarios')
             .doc(userId)
-            .collection('carrito')
-            .orderBy('timestamp', descending: true)
+            .collection('pedidos')
+            .orderBy('fecha', descending: true) // ← CAMBIO aquí
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -26,52 +26,63 @@ class PedidosScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No tienes productos registrados aún.'));
+            return const Center(child: Text('No tienes pedidos registrados aún.'));
           }
 
-          final compras = snapshot.data!.docs;
+          final pedidos = snapshot.data!.docs;
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: compras.length,
+            itemCount: pedidos.length,
             itemBuilder: (context, index) {
-              final data = compras[index].data() as Map<String, dynamic>;
-              final nombre = data['nombre'] ?? 'Producto';
-              final cantidad = data['cantidad'] ?? 1;
-              final precio = data['precio'] ?? 0.0;
-              final imagen = data['imagen'] ?? '';
-              final timestamp = data['timestamp'] as Timestamp?;
+              final data = pedidos[index].data() as Map<String, dynamic>;
+              final productos = List<Map<String, dynamic>>.from(data['productos'] ?? []);
+              final total = (data['total'] ?? 0).toDouble();
+              final igv = (data['igv'] ?? 0).toDouble();
+              final tipoEntrega = data['tipoEntrega'] ?? '---';
+              final timestamp = data['fecha'] as Timestamp?;
               final fecha = timestamp != null
                   ? DateFormat('dd/MM/yyyy hh:mm a').format(timestamp.toDate())
-                  : 'Fecha no disponible';
+                  : 'Fecha desconocida';
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 3,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(12),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      imagen,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  title: Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Cantidad: $cantidad'),
-                      Text('Fecha: $fecha'),
-                    ],
-                  ),
-                  trailing: Text(
-                    'S/.${precio.toStringAsFixed(2)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.boton),
-                  ),
+                elevation: 4,
+                child: ExpansionTile(
+                  title: Text('Pedido del $fecha'),
+                  subtitle: Text('Total: S/.${total.toStringAsFixed(2)}'),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Tipo de entrega: $tipoEntrega'),
+                          const SizedBox(height: 8),
+                          ...productos.map((p) => ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    p['imagen'] ?? '',
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                title: Text(p['nombre'] ?? ''),
+                                subtitle: Text('Cantidad: ${p['cantidad']}'),
+                                trailing: Text('S/.${(p['precio'] ?? 0).toStringAsFixed(2)}'),
+                              )),
+                          const Divider(),
+                          Text('IGV: S/.${igv.toStringAsFixed(2)}'),
+                          Text('Total con IGV: S/.${total.toStringAsFixed(2)}'),
+                          const SizedBox(height: 12),
+                        ],
+                      ),
+                    )
+                  ],
                 ),
               );
             },

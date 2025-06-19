@@ -136,11 +136,11 @@ class _ProductosCategoriaScreenState extends State<ProductosCategoriaScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.shopping_cart),
+            icon: const Icon(Icons.shopping_cart, color: Colors.white,),
             onPressed: () => widget.onNavigateToIndex(2), // Navegar a Carrito
           ),
           IconButton(
-            icon: const Icon(Icons.account_circle_outlined),
+            icon: const Icon(Icons.account_circle_outlined, color: Colors.white),
             onPressed: () => Navigator.pushNamed(context, '/perfil'),
           ),
         ],

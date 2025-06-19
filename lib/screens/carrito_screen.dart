@@ -24,10 +24,35 @@ class _CarritoScreenState extends State<CarritoScreen> {
     }
   }
 
-  void _confirmarPedido(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pedido confirmado')),
-    );
+  Future<void> _confirmarPedido(BuildContext context, List<QueryDocumentSnapshot> items, double total, double totalIGV) async {
+    final productos = items.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return {
+        'nombre': data['nombre'],
+        'precio': data['precio'],
+        'imagen': data['imagen'],
+        'cantidad': data['cantidad'],
+      };
+    }).toList();
+
+    await FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(userId)
+        .collection('pedidos')
+        .add({
+      'productos': productos,
+      'total': total + costoEnvio,
+      'igv': totalIGV,
+      'tipoEntrega': tipoEntrega,
+      'fecha': FieldValue.serverTimestamp(),
+    });
+
+    for (var doc in items) {
+      await doc.reference.delete();
+    }
+
+    if (!mounted) return;
+    Navigator.pushNamed(context, '/pedido-confirmado');
   }
 
   @override
@@ -68,11 +93,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
             totalIGV += igvProducto * cantidad;
           }
 
-          if (tipoEntrega == 'Envío') {
-            costoEnvio = 5.0;
-          } else {
-            costoEnvio = 0.0;
-          }
+          costoEnvio = tipoEntrega == 'Envío' ? 5.0 : 0.0;
 
           return Column(
             children: [
@@ -193,7 +214,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: ElevatedButton(
-                  onPressed: () => _confirmarPedido(context),
+                  onPressed: () => _confirmarPedido(context, items, total, totalIGV),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.boton,
                     padding: const EdgeInsets.symmetric(vertical: 16),
